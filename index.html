@@ -1,0 +1,398 @@
+<link rel="preconnect" href="https://fonts.gstatic.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&display=swap" rel="stylesheet">
+<style>
+    body {
+        background-color: #000;
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+
+    #canvas {
+        display:block;
+        filter: blur(7px);
+    }
+
+    #logo {
+        text-align: center;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        -webkit-transform: translate(-50%, -50%);
+        transform: translate(-50%, -50%);
+    }
+
+    #logo span {
+        color: #d0d0d0;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 128pt;
+    }
+
+    #logo div.upper span {
+
+    }
+
+    #logo div.upper span.small {
+        position: relative;
+        bottom: 0;
+        font-size: 44pt;
+    }
+
+    #logo div.upper span.small span {
+        font-size: inherit;
+    }
+
+    #logo span.links {
+        font-size: 34pt;
+    }
+
+    #logo span.links a {
+        font-size: 14pt;
+        color: #d0d0d0;
+        font-weight: 400;
+        vertical-align: middle;
+    }
+</style>
+<svg id="map" height="100%" width="100%" style="position: absolute; display: none">
+  <polyline points="0,0 245,245 245,360 300,360 300,260 350,260 350,360 400,360 400,260 450,260 450,360 500,360 500,260 550,260 550,360 2000,360"/>
+  <polyline points="0,100 195,295 195,410 2000,410"/>
+  <polyline points="0,200 145,345 145,460 1000,460 1200,600 2000,600"/>
+  <polyline points="0,300 95,395 95,510 1000,510 1200,650 2000,650"/>
+  <polyline points="510,0 720,210 780,210 780,170 775,165 775,130 780,125 920,125 920,0"/>
+  <polyline points="2000,460 1125,460 1125,495 1200,550 2000,550"/>
+  <polyline points="2000,510 1200,510"/>
+  <polyline points="2000,310 670,310 570,210 310,210 100,0"/>
+  <polyline points="2000,260 670,260 410,0"/>
+  <polyline points="0,560 700,560 1010,800 1010,1100"/>
+  <polyline points="0,610 700,610 950,800 950,1100"/>
+  <polyline points="0,660 700,660 890,800 890,1100"/>
+  <polyline points="820,1100 820,800 700,710 0,710"/>
+  <polyline points="760,1100 760,800 700,760 0,760"/>
+</svg>
+<canvas id='canvas'></canvas>
+<div id="logo">
+  <div class="upper"><span>Idlerus</span><span id="switch" class="small">.tech</span></div>
+  <span class="links"><a href="https://idlerus.cloud">Cloud</a> | <a href="https://idlerus.space">Space</a> | <a href="https://idlerus.website">Website</a> | <a href="https://idlerus.fun">Fun</a></span>
+</div>
+<script>
+    class Dot
+    {
+        constructor(speed, canvas, path, tail, color, size)
+        {
+            this.size = size;
+            this.isRunning = false;
+            this.speed = speed;
+            this.canvas = canvas;
+            this.context = this.canvas.getContext('2d');
+            this.path = path;
+            this.pathProgress = 0;
+            this.color = color;
+            this.x = parseFloat(this.path['x'][0]);
+            this.y = parseFloat(this.path['y'][0]);
+            this.setDirection();
+            this.detectionRadius = this.speed + .1;
+            this.die = false;
+            this.dying = false;
+            this.tail = tail;
+            this.tailLife = 0;
+            this.tailDead = false;
+            this.interval = null;
+        }
+
+        setInterval(interval)
+        {
+            this.interval = interval;
+        }
+
+        clearInterval()
+        {
+            clearInterval(this.interval);
+        }
+
+        setDirection()
+        {
+          this.direction = Math.atan2(this.path['y'][this.pathProgress+1] - this.y, this.path['x'][this.pathProgress+1] - this.x);
+        }
+
+        updatePosition()
+        {
+            if(this.dying === false)
+            {
+              this.x = parseFloat(this.x + this.speed * (Math.cos(this.direction)));
+              this.y = parseFloat(this.y + this.speed * (Math.sin(this.direction)));
+
+              /**
+               * finding point in a radius of another point as stated here, idk what am i doing.
+               * https://www.geeksforgeeks.org/find-if-a-point-lies-inside-or-on-circle/
+               */
+              if ((this.x - this.path['x'][this.pathProgress+1]) * (this.x - this.path['x'][this.pathProgress+1]) + (this.y - this.path['y'][this.pathProgress+1]) * (this.y - this.path['y'][this.pathProgress+1]) <= this.detectionRadius * this.detectionRadius)
+              {
+                if (this.pathProgress+2 < this.path['x'].length)
+                {
+                  this.pathProgress++;
+                  this.setDirection();
+                }
+                else
+                {
+                  this.dying = true;
+                }
+              }
+            }
+            else
+            {
+              if(this.tailLife >= 1)
+                this.die = true;
+              else
+                this.tailLife = this.tailLife + this.tail;
+            }
+        }
+
+        loop() {
+            this.isRunning = true;
+            this.updatePosition();
+
+            if (this.dying === false)
+            {
+                // Draw the dot
+                this.context.beginPath();
+                this.context.fillStyle = this.color;
+                this.context.moveTo(this.x, this.y);
+                this.context.arc(this.x, this.y, this.size, 0, Math.PI*2, true);
+                this.context.fill();
+            }
+        }
+
+        isItme(dot) {
+            return this === dot;
+        }
+    }
+</script>
+<script>
+    const queryString = window.location.search;
+    const urlParams = new URLSearchParams(queryString);
+
+    const CANVAS_WIDTH = window.innerWidth;
+    const CANVAS_HEIGHT = window.innerHeight;
+
+    const map = document.getElementById('map');
+    const lines = [];
+
+    const FPS = 60;
+    const SPS = .5; //Sparks per second
+    const tail = .02;
+
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const dots = [];
+    const sparkSize = 10;
+    const sparkSpeed = 10;
+    const sparkColours = [
+        //'#00d7f5', //light blue
+        //'#0000ff',
+        //'#dc44ff',
+        '#00ff00', //green
+        //'#ffbe49',
+        //'#ff0000',
+    ];
+    const renderPCB = true;
+    const PCBwidth = 2.5;
+    //const PCBcolour = '#005965'; //light blue
+    const PCBcolour = '#007700'; //green
+
+    init();
+
+    function init() {
+        window.onresize = resizeCanvas;
+        resizeCanvas();
+        let polylines = map.getElementsByTagName('polyline');
+        for (let i in polylines)
+        {
+            if (polylines[i] !== undefined && polylines[i].tagName === 'polyline')
+            {
+                let toPush = {
+                    x: [],
+                    y: []
+                };
+                let points = polylines[i].getAttribute('points').split(' ');
+                for (let point in points)
+                {
+                    let coords = points[point].split(',');
+                    toPush['x'].push(coords[0]);
+                    toPush['y'].push(coords[1]);
+                }
+                lines.push(toPush);
+            }
+        }
+
+        if (canvas) {
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+
+            context.fillStyle = 'rgba(0, 0, 0, 1)';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+
+            setInterval(
+                function() {
+                    context.fillStyle = 'rgba(0, 0, 0, ' + tail + ')';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                },
+                1000 / FPS
+            );
+
+            if (renderPCB)
+            {
+                setInterval(
+                    function ()
+                    {
+
+                        for (let line in lines)
+                        {
+                            context.lineWidth = PCBwidth;
+                            let rngCol = Math.floor(Math.random() * (sparkColours.length - 0) + 0);
+                            context.strokeStyle = PCBcolour;
+                            context.beginPath();
+                            for (let x in lines[line]['x'])
+                            {
+                                context.lineTo(lines[line]['x'][x], lines[line]['y'][x]);
+                            }
+                            context.stroke();
+                        }
+
+                    },
+                    1000 / FPS
+                );
+            }
+
+            setInterval(
+                function() {
+                    createTrail();
+                    for (let dot in dots)
+                    {
+                        loopDot(dot);
+                    }
+                },
+                1000 / SPS
+            );
+        }
+    }
+
+    function resizeCanvas() {
+        let width = canvas.style.width;
+        let height = canvas.style.height;
+        let maxWidth = window.innerWidth;
+        let maxHeight = window.innerHeight;
+
+        let ratio = maxWidth / width;
+        if(height * ratio > maxHeight) {
+            ratio = maxHeight / height;
+        }
+        canvas.style.width = width * ratio + "px";
+        canvas.style.height = height * ratio + "px";
+    }
+
+    function createTrail() {
+        let rngCol = Math.floor(Math.random() * (sparkColours.length - 0) + 0);
+        let rng = Math.floor(Math.random() * (lines.length - 0) + 0);
+        let rngSpeed = Math.floor(Math.random() * (sparkSpeed - 1) + 1);
+        dots.push(new Dot(3,canvas,lines[rng], tail, sparkColours[rngCol], sparkSize));
+    }
+
+    function loopDot(dot)
+    {
+        if (dots[dot].isRunning === false)
+        {
+            var interval = setInterval(
+                function(dot) {
+                    if (dots[dot] !== undefined)
+                    {
+                        dots[dot].loop();
+                    }
+                },
+                1000 / FPS,
+                dot
+            );
+            dots[dot].setInterval(interval);
+        }
+        if (dots[dot] !== undefined)
+        {
+            if (dots[dot].die)
+            {
+                if(dots[dot].isItme(dots[dot]))
+                {
+                    dots[dot].clearInterval();
+                    dots.splice(dot, 1);
+                }
+            }
+        }
+
+    }
+</script>
+<script>
+  const items = [
+      '.tech',
+      '.space',
+      '.cool',
+      '.fun',
+      '.website',
+      '.cloud',
+      '.gg'
+  ];
+  const text = document.getElementById('switch');
+  const wrapper = document.getElementById('logo');
+  const itemsSpan = [];
+  var progress = 0;
+  var animation = 0;
+  const animationMax = 30;
+
+  text.innerHTML = "";
+
+
+  for(let i in items)
+  {
+      let span = document.createElement('span');
+      span.style.position = "absolute";
+      span.style.opacity = 0;
+      span.style.top = 0;
+      span.innerText = items[i];
+      text.appendChild(span);
+      itemsSpan.push(span);
+  }
+
+  itemsSpan[itemsSpan.length-1].style.opacity = 1;
+
+  setInterval(
+      function()
+      {
+          switchText();
+      },
+      3000
+  );
+
+  function switchText()
+  {
+      let oldSpan = itemsSpan[(progress == 0) ? itemsSpan.length-1 : progress-1];
+      let newSpan = itemsSpan[progress];
+      let interval = setInterval(
+          function()
+          {
+              oldSpan.style.opacity = 1 - (animation / animationMax);
+              oldSpan.style.top = ((60 * animation) / animationMax) + "px";
+
+              newSpan.style.opacity = animation / animationMax;
+              newSpan.style.top = (-60 - ((60 * animation) / animationMax)*-1) + "px";
+
+              if (animation >= animationMax)
+              {
+                  animation = 0;
+                  clearInterval(interval);
+              }
+              animation++;
+          },
+          0
+      )
+
+      if(progress < itemsSpan.length-1) progress++;
+      else progress = 0;
+  }
+
+</script>
